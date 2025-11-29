@@ -1,11 +1,10 @@
-import os
-import ffmpeg
+import os, ffmpeg, asyncio
 from src.utils.exceptions import BitrateTooLowError, InvalidFileTypeError, TooManyAttemptsError
 from src.Config import GIBIBYTE_TO_GIGABYTE_CONSTANT, MIN_VID_BITRATE, MIN_AUDIO_BITRATE, MAX_AUDIO_BITRATE
 
 
 
-def compress_video(absolute_path: str, output_path: str, target_size_mb: int, max_attempts: int = 3) -> None:
+def compress_video(absolute_path: str, output_path: str, target_size_mb: int, max_attempts: int = 3) -> str | None:
     """
     Compresses video files to a target size using ffmpeg.
     Credits to https://gist.github.com/ESWZY/a420a308d3118f21274a0bc3a6feb1ff for bitrate calculation method.
@@ -104,3 +103,7 @@ def compress_video(absolute_path: str, output_path: str, target_size_mb: int, ma
         return output_path
     else:
         return None
+
+
+async def async_compress(absolute_path: str, output_path: str, target_size_mb: int, max_attempts: int = 3) -> str | None:
+    return await asyncio.to_thread(compress_video, absolute_path, output_path, target_size_mb, max_attempts)
