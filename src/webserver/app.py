@@ -44,14 +44,17 @@ async def handle_post(request, job_id):
     
     # get the user id
     user_id = get_user_id(int(job_id))
+    if user_id == -1:
+        return f"This job is past expired."
 
     # save the file
     file.save(os.path.join(VIDEO_FOLDER, f"{str(user_id)}{file.filename[file.filename.rfind("."):]}"))
 
-    return f"File '{file.filename}' uploaded successfully for job ID {job_id}."
+    return f"File '{file.filename}' uploaded successfully for job ID {job_id}.\nGo back to discord :D"
 
 async def handle_get(job_id: str):
     # return the upload file form
+    # this entire form is vibecoded. web dev sucks
     template = '''
     <html>
         <head>
