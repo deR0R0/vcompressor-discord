@@ -1,0 +1,21 @@
+import os, discord, asyncio, threading
+from discord.ext import commands
+import src.Global # load global vars
+from src.Global import client
+
+from src.utils.compressor import compress_video
+from src.utils.jobmanager import add_job, remove_job, get_all_jobs
+
+from src.webserver.app import run
+
+# load commands
+from src.commands import video
+
+@client.event
+async def on_ready():
+    print(f'We have logged in as {client.user}')
+    print(f"Synced {len(await client.tree.sync())} commands.")
+
+t = threading.Thread(target=run)
+t.start()
+client.run(os.environ.get("DISCORDTOKEN"))
