@@ -1,8 +1,9 @@
 import flask, os, asyncio
 from flask import request
 
+from src.main import run_bot
 from src.utils.jobmanager import get_user_id
-from src.Config import VIDEO_FOLDER
+from src.Config import VIDEO_FOLDER, IS_PRODUCTION
 
 app = flask.Flask(__name__)
 
@@ -131,3 +132,7 @@ async def handle_get(job_id: str):
 
 def run():
     app.run(host="0.0.0.0", port=1234, debug=False, load_dotenv=False)
+
+if IS_PRODUCTION:
+    from src.main import run_bot_via_thread
+    run_bot_via_thread()

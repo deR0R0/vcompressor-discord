@@ -6,8 +6,6 @@ from src.Global import client
 from src.utils.compressor import compress_video
 from src.utils.jobmanager import add_job, remove_job, get_all_jobs
 
-from src.webserver.app import run
-
 # load commands
 from src.commands import video
 
@@ -16,6 +14,17 @@ async def on_ready():
     print(f'We have logged in as {client.user}')
     print(f"Synced {len(await client.tree.sync())} commands.")
 
-t = threading.Thread(target=run)
-t.start()
-client.run(os.environ.get("DISCORDTOKEN"))
+# production
+def run_bot():
+    client.run(os.environ.get("DISCORDTOKEN"))
+
+def run_bot_via_thread():
+    t = threading.Thread(target=run_bot)
+    t.start()
+
+if __name__ == "__main__":
+    print("CURRENTLY RUNNING DEVELOPMENT VERSION. PLEASE DO NOT RUN THIS AS PRODUCTION BUT RATHER USE WSGI ON THE WEB SERVER.")
+    from src.webserver.app import run # import the webserver run function
+    t = threading.Thread(target=run)
+    t.start()
+    client.run(os.environ.get("DISCORDTOKEN"))
