@@ -6,11 +6,25 @@ I don't know if there are any other features this bot needs, but feel free to cr
 
 ## Bot invite link
 
-**Currently None** - I'll update this repo once I find a reliable hosting method.
+[Guild Invite Link](https://discord.com/oauth2/authorize?client_id=1443725587712839702&permissions=1126176932546624&integration_type=0&scope=bot)
+[User Install Link](https://discord.com/oauth2/authorize?client_id=1443725587712839702&permissions=1126176932546624&integration_type=1&scope=bot)
 
 ## Self-Hosting
 
-Just fork the repo and run the main.py file. In VSCode, make sure to set the CWD as the directory you opened.
+1. Clone the repo
+2. `cd` into the directory (most likely vcompressor-discord) after the clone
+3. Create a python virtual environment using `python3 -m venv virenv`
+4. Edit the `./virenv/bin/activate` script by adding the following line to it:
+`export DISCORDTOKEN="token"` (ofc, replace token with your actual discord token)
+5. Install all the depends: `python3 -m pip install -r requirements.txt` (if your requirements install fails on audioops, just remove it from the file)
+6. If the ./src/data folder, ./src/data/jobs.json file, ./src/data/video folder does not exist, please create it
+7. When hosting in a production environment (i'm using gunicorn), make sure the `IS_PRODUCTION` variable in `Config.py` is set to `True`.
+8. Run the two scripts at the same time, for example, I made a run.sh script that runs both the bot and the website at the same time. Then, I configured systemd to run the run.sh script.
+
+> [!IMPORTANT]
+> If you're using systemd, make sure you set the working directory to the project folder otherwise the module imports will fail!
+
+Final note: I also used cloudflared (cloudflare tunnels) to get my site public on my domain!
 
 ## Commands
 
@@ -36,3 +50,4 @@ I plan on making a better way to track what part of the compression process. Thi
 ## Changelog
 
 11/29/25 - Initial Bot. Probably working.
+12/3/25 - Fixed production code issues.
