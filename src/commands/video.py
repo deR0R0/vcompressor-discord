@@ -1,7 +1,7 @@
 import discord, asyncio, os, re
 
 from src.utils.compressor import async_compress
-from src.utils.jobmanager import add_job, remove_job, get_job_id
+from src.utils.jobmanager import add_job, remove_job_by_user, get_job_id
 from src.Global import client
 from src.Config import UPLOAD_LINK, VIDEO_FOLDER, SUPPORTED_TYPES
 from src.utils.exceptions import InvalidFileTypeError, BitrateTooLowError, TooManyAttemptsError
@@ -14,7 +14,7 @@ class LinkWebsite(discord.ui.View):
         self.original_user = original_user
 
     async def on_timeout(self):
-        remove_job(get_job_id(self.original_user.id)) # prio removing the job incase the bottom fails
+        remove_job_by_user(self.original_user.id) # prio removing the job incase the bottom fails
         # delete message if they wait too long..
         if self.message:
             try:
@@ -22,7 +22,12 @@ class LinkWebsite(discord.ui.View):
             except discord.NotFound:
                 pass
         
-
+def remove_trash(file1: str, file2: str):
+    try:
+        os.remove(file1)
+        os.remove(file2)
+    except FileNotFoundError:
+        pass
 
 @client.tree.command(name="video", description="Compresses a video file to the 10 MB discord limit then sends it.")
 async def video(interaction: discord.Interaction):
@@ -64,7 +69,7 @@ async def video(interaction: discord.Interaction):
         # waited too long
         if checks > 10:
             await message.edit(content=":cry: You made me wait too long... Job canceled")
-            remove_job(interaction.user.id)
+            remove_job_by_user(interaction.user.id)
             return
         
         await asyncio.sleep(3)
@@ -75,28 +80,33 @@ async def video(interaction: discord.Interaction):
     # start the compression status
 
     # remove the job first
-    remove_job(get_job_id(interaction.user.id))
+    remove_job_by_user(interaction.user.id)
 
     # notify user
     await message.edit(content=":white_check_mark: Recieved your file!", view=None)
     await asyncio.sleep(1)
     await message.edit(content=":gear: Compressing your video right now...")
 
+    compressed_file = os.path.join(os.path.abspath(VIDEO_FOLDER), f"{str(interaction.user.id)}_compressed.mp4")
 
     # actually start compressing
     try:
-        await async_compress(video_path, os.path.join(os.path.abspath(VIDEO_FOLDER), f"{str(interaction.user.id)}_compressed.mp4"), 10)
+        await async_compress(video_path, compressed_file, 10)
     except (InvalidFileTypeError, FileNotFoundError) as e:
         await message.edit(content=f":x: Couldn't process this file. Error: `{e}`")
+        remove_trash(compressed_file, video_path)
         return
     except BitrateTooLowError as e:
         await message.edit(content=f":x: Compression failed: `{e}`")
+        remove_trash(compressed_file, video_path)
         return
     except TooManyAttemptsError as e:
         await message.edit(content=f":x: Compression failed: `{e}`")
+        remove_trash(compressed_file, video_path)
         return
     except Exception as e:
         await message.edit(content=f":x: Critical Error has occured! `{e}`")
+        remove_trash(compressed_file, video_path)
         return
 
     await message.edit(content=":white_check_mark: Successfully Compressed!")
@@ -105,10 +115,8 @@ async def video(interaction: discord.Interaction):
     
     await message.edit(content=":inbox_tray: Uploading your video now...")
 
-    compressed_file = os.path.join(os.path.abspath(VIDEO_FOLDER), f"{str(interaction.user.id)}_compressed.mp4")
-
     await message.edit(content=":wave: Your video has arrived!", attachments=[discord.File(compressed_file)])
 
 
-    os.remove(compressed_file)
-    os.remove(video_path)
+    # clean up files
+    remove_trash(compressed_file, video_path)

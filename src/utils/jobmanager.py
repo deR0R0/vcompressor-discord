@@ -80,6 +80,20 @@ def remove_job(job_id: int):
         del all_jobs[job_key]
         save_jobs(all_jobs)
 
+def remove_job_by_user(user_id: int):
+    """
+    Remove a job based on user ID
+    """
+
+    all_jobs: dict = get_all_jobs()
+    user_id_str = str(user_id)
+
+    for job_id, existing_user_id in _job_entries(all_jobs):
+        if existing_user_id == user_id_str:
+            del all_jobs[job_id]
+            save_jobs(all_jobs)
+            return
+
 
 def get_user_id(job_id: int) -> int:
     """
