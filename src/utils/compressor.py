@@ -1,6 +1,8 @@
-import os, ffmpeg, asyncio
+import os
+import ffmpeg
+import asyncio
 from src.utils.exceptions import BitrateTooLowError, InvalidFileTypeError, TooManyAttemptsError
-from src.Config import GIBIBYTE_TO_GIGABYTE_CONSTANT, MIN_VID_BITRATE, MIN_AUDIO_BITRATE, MAX_AUDIO_BITRATE
+from src.Config import MIN_VID_BITRATE, MIN_AUDIO_BITRATE, MAX_AUDIO_BITRATE
 
 
 

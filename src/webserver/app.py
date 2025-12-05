@@ -1,8 +1,9 @@
-import flask, os, asyncio
+import flask
+import os
 from flask import request
 
 from src.utils.jobmanager import get_user_id
-from src.Config import VIDEO_FOLDER, IS_PRODUCTION
+from src.Config import VIDEO_FOLDER
 
 app = flask.Flask(__name__)
 
@@ -45,7 +46,7 @@ async def handle_post(request, job_id):
     # get the user id
     user_id = get_user_id(int(job_id))
     if user_id == -1:
-        return f"This job is past expired."
+        return "This job is past expired."
 
     # save the file
     file.save(os.path.join(VIDEO_FOLDER, f"{str(user_id)}{file.filename[file.filename.rfind("."):]}"))

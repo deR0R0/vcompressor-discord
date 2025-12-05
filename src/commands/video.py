@@ -1,7 +1,9 @@
-import discord, asyncio, os, re
+import discord
+import asyncio
+import os
 
 from src.utils.compressor import async_compress
-from src.utils.jobmanager import add_job, remove_job_by_user, get_job_id
+from src.utils.jobmanager import add_job, remove_job_by_user
 from src.Global import client
 from src.Config import UPLOAD_LINK, VIDEO_FOLDER, VIDEO_TARGET_SIZE_MB, UPLOAD_TIMEOUT_SECONDS
 from src.utils.exceptions import InvalidFileTypeError, BitrateTooLowError, TooManyAttemptsError

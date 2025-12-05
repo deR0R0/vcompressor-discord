@@ -1,14 +1,10 @@
-import os, discord, asyncio, threading
-from discord.ext import commands
-import src.Global # load global vars
+import os
+import threading
 from src.Global import client
 from src.Config import IS_PRODUCTION
 
-from src.utils.compressor import compress_video
-from src.utils.jobmanager import add_job, remove_job, get_all_jobs
 
 # load commands
-from src.commands import video
 
 @client.event
 async def on_ready():
