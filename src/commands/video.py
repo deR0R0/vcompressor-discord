@@ -3,7 +3,7 @@ import discord, asyncio, os, re
 from src.utils.compressor import async_compress
 from src.utils.jobmanager import add_job, remove_job_by_user, get_job_id
 from src.Global import client
-from src.Config import UPLOAD_LINK, VIDEO_FOLDER, SUPPORTED_TYPES
+from src.Config import UPLOAD_LINK, VIDEO_FOLDER, VIDEO_TARGET_SIZE_MB, UPLOAD_TIMEOUT_SECONDS
 from src.utils.exceptions import InvalidFileTypeError, BitrateTooLowError, TooManyAttemptsError
 
 class LinkWebsite(discord.ui.View):
@@ -43,7 +43,7 @@ async def video(interaction: discord.Interaction):
         await message.edit(content="Sorry, you currently already have a job going. Please fulfill it or cancel it.")
         return
     
-    await message.edit(content=":hourglass: Waiting for your upload. Look for another message by the bot!")
+    await message.edit(content=f":hourglass: Waiting for your upload. Look for another message by the bot!\nJob will be auto-canceled <t:{int((interaction.created_at.timestamp() + UPLOAD_TIMEOUT_SECONDS))}:R>")
 
     # send the button as a ephmeral
     upload_button = await interaction.followup.send(content="Click the upload button and upload your video on the website!", view=LinkWebsite(job_id, interaction.user), ephemeral=True)
@@ -67,8 +67,9 @@ async def video(interaction: discord.Interaction):
             break
 
         # waited too long
-        if checks > 10:
+        if checks > UPLOAD_TIMEOUT_SECONDS // 3:
             await message.edit(content=":cry: You made me wait too long... Job canceled")
+            await upload_button.delete()
             remove_job_by_user(interaction.user.id)
             return
         
@@ -91,16 +92,12 @@ async def video(interaction: discord.Interaction):
 
     # actually start compressing
     try:
-        await async_compress(video_path, compressed_file, 10)
+        await async_compress(video_path, compressed_file, VIDEO_TARGET_SIZE_MB)
     except (InvalidFileTypeError, FileNotFoundError) as e:
         await message.edit(content=f":x: Couldn't process this file. Error: `{e}`")
         remove_trash(compressed_file, video_path)
         return
-    except BitrateTooLowError as e:
-        await message.edit(content=f":x: Compression failed: `{e}`")
-        remove_trash(compressed_file, video_path)
-        return
-    except TooManyAttemptsError as e:
+    except (BitrateTooLowError, TooManyAttemptsError) as e:
         await message.edit(content=f":x: Compression failed: `{e}`")
         remove_trash(compressed_file, video_path)
         return
