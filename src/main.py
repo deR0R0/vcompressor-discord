@@ -1,10 +1,14 @@
 import os
 import threading
+import src.Global # load global vars
 from src.Global import client
 from src.Config import IS_PRODUCTION
 
+from src.utils.compressor import compress_video
+from src.utils.jobmanager import add_job, remove_job, get_all_jobs
 
 # load commands
+from src.commands import video
 
 @client.event
 async def on_ready():
