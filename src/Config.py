@@ -2,16 +2,7 @@
 IS_PRODUCTION = False
 
 # config vars for video compression
-GIBIBYTE_TO_GIGABYTE_CONSTANT = (1024 ** 3) / (1000 ** 3)
-MIN_AUDIO_BITRATE = 64_000  # in bps (bare minimum)
-MAX_AUDIO_BITRATE = 96_000  # in bps (bare minimum)
-MIN_VID_BITRATE = {
-    "720": 125_000,
-    "1080": 250_000,
-    "1440": 500_000,
-    "2160": 1_000_000,
-    "above": 2_000_000
-}
+MIN_AUDIO_BITRATE = 32_000
 
 # video stuff
 VIDEO_FOLDER = "./src/data/videos/"

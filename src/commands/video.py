@@ -32,6 +32,8 @@ def remove_trash(file1: str, file2: str):
         pass
 
 @client.tree.command(name="video", description="Compresses a video file to the 10 MB discord limit then sends it.")
+@discord.app_commands.allowed_contexts(dms=True, guilds=True)
+@discord.app_commands.allowed_installs(users=True)
 async def video(interaction: discord.Interaction):
 
     # send a message so we can edit it later

@@ -2,11 +2,11 @@ import os
 import ffmpeg
 import asyncio
 from src.utils.exceptions import BitrateTooLowError, InvalidFileTypeError, TooManyAttemptsError
-from src.Config import MIN_VID_BITRATE, MIN_AUDIO_BITRATE, MAX_AUDIO_BITRATE
+from src.Config import MIN_AUDIO_BITRATE
 
 
 
-def compress_video(absolute_path: str, output_path: str, target_size_mb: int, max_attempts: int = 3) -> str | None:
+def compress_video(absolute_path: str, output_path: str, target_size_mb: int, size_ratio: float = 1.0, max_attempts: int = 3) -> str | None:
     """
     Compresses video files to a target size using ffmpeg.
     Credits to https://gist.github.com/ESWZY/a420a308d3118f21274a0bc3a6feb1ff for bitrate calculation method.
@@ -34,60 +34,32 @@ def compress_video(absolute_path: str, output_path: str, target_size_mb: int, ma
     video_stream = next((s for s in probe['streams'] if s['codec_type'] == 'video'), None)
     if video_stream is None:
         raise InvalidFileTypeError("No video stream found.")
-    width = int(video_stream['width'])
-    height = int(video_stream['height'])
-    resolution = min(width, height)
 
     # get audio bitrate
     audio_stream = next((s for s in probe['streams'] if s['codec_type'] == 'audio'), None)
     audio_bitrate = float(audio_stream['bit_rate']) if audio_stream and audio_stream.get('bit_rate') else 0.0
 
+    # clamp the audio bitrate to min
+    audio_bitrate = MIN_AUDIO_BITRATE
 
     # calculate total bitrate in bps. includes both audio AND video
     # target_size_mb * 1024 (kb) * 1024 (bytes) * 8 (bits) / (duration (seconds)
     target_bitrate_total = (target_size_mb * 1024 * 1024 * 8) / duration
 
-    # find minimum video bitrate based on resolution
-    if resolution > 2160:
-        min_vid_bitrate = MIN_VID_BITRATE["above"]
-    elif resolution > 1440:
-        min_vid_bitrate = MIN_VID_BITRATE["2160"]
-    elif resolution > 1080:
-        min_vid_bitrate = MIN_VID_BITRATE["1440"]
-    elif resolution > 720:
-        min_vid_bitrate = MIN_VID_BITRATE["1080"]
-    else:
-        min_vid_bitrate = MIN_VID_BITRATE["720"]
-
-    # calculate bare minimum total bitrate
-    bare_min_total_bitrate = min_vid_bitrate + audio_bitrate
-
-    # clamp audio bitrate to allowed range while respecting total target size
-    if target_bitrate_total > MIN_AUDIO_BITRATE and audio_bitrate < MIN_AUDIO_BITRATE:
-        audio_bitrate = MIN_AUDIO_BITRATE
-    elif audio_bitrate > MAX_AUDIO_BITRATE:
-        audio_bitrate = MAX_AUDIO_BITRATE
-
-    if target_bitrate_total < bare_min_total_bitrate:
-        print(resolution, min_vid_bitrate, audio_bitrate, target_bitrate_total)
-        raise BitrateTooLowError(f"Calculated bitrate {target_bitrate_total}bps is too low. Minimum is {bare_min_total_bitrate}bps. Try shortening video length.")
-    
-    # in the original github gist, the user found the best min size
-    # but it was pointless (because they just printed out a warning)
-    # so we're just going to go ahead and just compress the video
-
-    # find target audio bitrate
-    if 10 * audio_bitrate > target_bitrate_total:
-        audio_bitrate = target_bitrate_total / 10
+    # make sure audio bitrate is not more than 5% of total bitrate
+    if 20 * audio_bitrate > target_bitrate_total:
+        audio_bitrate = target_bitrate_total / 20 # prio video quality over audio quality
 
     # find target video bitrate
     video_bitrate = target_bitrate_total - audio_bitrate
-    video_bitrate = int(video_bitrate * 0.92) # give some buffer for the container overhead
-    if video_bitrate < min_vid_bitrate:
-        raise BitrateTooLowError(f"Calculated video bitrate {video_bitrate}kbps is too low. Minimum is {min_vid_bitrate}kbps. Try shortening video length.")
+
+    # add an adaptive buffer based on duration
+    buffer = 0.95 # default buffer
+    buffer -= (0.005 * ((duration // 60) + 1)) # reduce buffer by 0.5% for every minute of video
+    buffer = max(buffer, 0.7) # clamp to minimum of 70%
+    video_bitrate = int(video_bitrate * buffer * size_ratio) # give some buffer for the container overhead
     
     # start ffmpeg compression
-
     video = ffmpeg.input(absolute_path)
 
     # we're just going to do the two pass method for all videos
@@ -95,12 +67,15 @@ def compress_video(absolute_path: str, output_path: str, target_size_mb: int, ma
                     **{'c:v': 'libx264', 'b:v': video_bitrate, 'pass': 1, 'f': 'mp4'}
                   ).overwrite_output().run(quiet=True)
     ffmpeg.output(video, output_path,
-                    **{'c:v': 'libx264', 'b:v': video_bitrate, 'pass': 2, 'c:a': 'aac', 'b:a': int(audio_bitrate)}
+                    **{'c:v': 'libx264', 'b:v': video_bitrate, 'pass': 2, 'c:a': 'aac', 'b:a': int(audio_bitrate), 'movflags': '+faststart', 'maxrate': video_bitrate * 1.5, 'bufsize': video_bitrate * 2}
                   ).overwrite_output().run(quiet=True)
     
     if os.path.getsize(output_path) > target_size_mb * 1024 * 1024:
+        print(f"Attempting to compress video: {absolute_path} again. Size is {os.path.getsize(output_path)} bytes, target is {target_size_mb * 1024 * 1024} bytes.")
+        # calculate new size ratio
+        size_ratio = size_ratio * (target_size_mb * 1024 * 1024) / os.path.getsize(output_path)
         # attempt to compress it again
-        return compress_video(absolute_path, output_path, target_size_mb, max_attempts - 1)
+        return compress_video(absolute_path, output_path, target_size_mb, size_ratio=size_ratio - 0.08, max_attempts=max_attempts - 1)
     elif os.path.getsize(output_path) <= target_size_mb * 1024 * 1024:
         return output_path
     else:
@@ -109,3 +84,23 @@ def compress_video(absolute_path: str, output_path: str, target_size_mb: int, ma
 
 async def async_compress(absolute_path: str, output_path: str, target_size_mb: int, max_attempts: int = 3) -> str | None:
     return await asyncio.to_thread(compress_video, absolute_path, output_path, target_size_mb, max_attempts)
+
+
+if __name__ == "__main__":
+    def test_compress(filename: str):
+        # for testing purposes
+        input_path = f"./src/data/videos/{filename}.mp4"
+        output_path = f"./src/data/videos/{filename}_compressed.mp4"
+        target_size = 10
+
+        try:
+            result = compress_video(input_path, output_path, target_size)
+            if result:
+                print(f"Video compressed successfully: {result}")
+            else:
+                print("Failed to compress video to the target size.")
+        except Exception as e:
+            print(f"Error during compression: {e}")
+
+    test_compress("test_standard_video")
+    test_compress("test_large_video")
