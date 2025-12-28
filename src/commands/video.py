@@ -116,7 +116,7 @@ async def video(interaction: discord.Interaction):
     
     await message.edit(content=":inbox_tray: Uploading your video now...")
 
-    await message.edit(content=":wave: Your video has arrived!", attachments=[discord.File(compressed_file)])
+    await interaction.followup.send(content=":wave: Your video is here!", file=discord.File(compressed_file))
 
 
     # clean up files
