@@ -45,7 +45,8 @@ These are the problems I went through while coding this project. (and how I fixe
 
 ## Future Plans
 
-I plan on making a better way to track what part of the compression process. This can be implemented in the jobs system: storing the status as a tuple. (?)
+1. Chunk uploads to avoid the cloudflare tunnel's strict 100 MB upload limit. Priority: HIGH.
+2. I plan on making a better way to track what part of the compression process. This can be implemented in the jobs system: storing the status as a tuple. Priority: LOW.
 
 ## Changelog
 
